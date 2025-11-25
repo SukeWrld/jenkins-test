@@ -1,87 +1,81 @@
 pipeline {
-    agent any
+    agent any
 
-    environment {
-        PROJECT_NAME = "pipeline-test"
-        SONARQUBE_URL = "http://sonarqube:9000"
-        SONARQUBE_TOKEN = credentials('sonarQubeToken')
-        TARGET_URL = "http://172.23.202.60:5000"
-    }
+    environment {
+        PROJECT_NAME = "pipeline-test"
+        SONARQUBE_URL = "http://sonarqube:9000"
+        SONARQUBE_TOKEN = "sqa_e50e4105cca2bc87fe49a2cd8a094d379521f1e0"
+        TARGET_URL = "http://172.23.202.60:5000"
+    }
 
-    stages {
-        stage('Install Python') {
-            agent {
-                label 'built-in' 
-                user 'root'
-            }
-            steps {
-                sh '''
-                    apt update -y
-                    apt install -y python3 python3-venv python3-pip
-                '''
-            }
-        }
-        
-        stage('Setup Environment') {
-            steps {
-                sh '''
-                    python3 -m venv venv
-                    . venv/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                '''
-            }
-        }
-        
-        stage('Python Security Audit') {
-            steps {
-                sh '''
-                    . venv/bin/activate
-                    pip install pip-audit
-                    mkdir -p dependency-check-report
-                    pip-audit -r requirements.txt -f markdown -o dependency-check-report/pip-audit.md || true
-                '''
-            }
-        }
-        
-        stage('SonarQube Analysis') {
-            steps {
-                script {
-                    def scannerHome = tool 'SonarQubeScanner'
-                    withSonarQubeEnv('SonarQubeScanner') {
-                        sh """
-                            ${scannerHome}/bin/sonar-scanner \\
-                                -Dsonar.projectKey=$PROJECT_NAME \\
-                                -Dsonar.sources=. \\
-                                -Dsonar.host.url=$SONARQUBE_URL \\
-                                -Dsonar.login=$SONARQUBE_TOKEN
-                        """
-                    }
-                }
-            }
-        }
-        
-        stage('Dependency Check') {
-            environment {
-                NVD_API_KEY = credentials('nvdApiKey')
-            }
-            steps {
-                dependencyCheck additionalArguments: "--scan . --format HTML --out dependency-check-report --enableExperimental --enableRetired --nvdApiKey ${NVD_API_KEY}", odcInstallation: 'DependencyCheck'
-            }
-        }
+    stages {
+        stage('Install Python') {
+            steps {
+                sh '''
+                    apt update
+                    apt install -y python3 python3-venv python3-pip
+                '''
+            }
+        }
+        
+        stage('Setup Environment') {
+            steps {
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+        stage('Python Security Audit') {
+            steps {
+                sh '''
+                    . venv/bin/activate
+                    pip install pip-audit
+                    mkdir -p dependency-check-report
+                    pip-audit -r requirements.txt -f markdown -o dependency-check-report/pip-audit.md || true
+                '''
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'SonarQubeScanner'
+                    withSonarQubeEnv('SonarQubeScanner') {
+                        sh """
+                            ${scannerHome}/bin/sonar-scanner \
+                                -Dsonar.projectKey=$PROJECT_NAME \
+                                -Dsonar.sources=. \
+                                -Dsonar.host.url=$SONARQUBE_URL \
+                                -Dsonar.login=$SONARQUBE_TOKEN
+                        """
+                    }
+                }
+            }
+        }
+        stage('Dependency Check') {
+            environment {
+                NVD_API_KEY = credentials('nvdApiKey')
+            }
+            steps {
+                dependencyCheck additionalArguments: "--scan . --format HTML --out dependency-check-report --enableExperimental --enableRetired --nvdApiKey ${NVD_API_KEY}", odcInstallation: 'DependencyCheck'
+            }
+        }
 
-        stage('Publish Reports') {
-            steps {
-                publishHTML([
-                    allowMissing: false,
-                    alwaysLinkToLastBuild: true,
-                    keepAll: true,
-                    reportDir: 'dependency-check-report',
-                    reportFiles: 'dependency-check-report.html',
-                    reportName: 'OWASP Dependency Check Report'
-                ])
-            }
-        }
-    }
+        stage('Publish Reports') {
+            steps {
+                publishHTML([
+                    allowMissing: false,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: 'dependency-check-report',
+                    reportFiles: 'dependency-check-report.html',
+                    reportName: 'OWASP Dependency Check Report'
+                ])
+            }
+        }
+    }
 
-}
+} toma solo cambiale la parte no le agregues nada mas 
