@@ -4,15 +4,19 @@ pipeline {
     environment {
         PROJECT_NAME = "pipeline-test"
         SONARQUBE_URL = "http://sonarqube:9000"
-        SONARQUBE_TOKEN = "sqa_e50e4105cca2bc87fe49a2cd8a094d379521f1e0"
+        SONARQUBE_TOKEN = credentials('sonarQubeToken')
         TARGET_URL = "http://172.23.202.60:5000"
     }
 
     stages {
         stage('Install Python') {
+            agent {
+                label 'built-in' 
+                user 'root'
+            }
             steps {
                 sh '''
-                    apt update
+                    apt update -y
                     apt install -y python3 python3-venv python3-pip
                 '''
             }
@@ -28,6 +32,7 @@ pipeline {
                 '''
             }
         }
+        
         stage('Python Security Audit') {
             steps {
                 sh '''
@@ -45,16 +50,17 @@ pipeline {
                     def scannerHome = tool 'SonarQubeScanner'
                     withSonarQubeEnv('SonarQubeScanner') {
                         sh """
-                            ${scannerHome}/bin/sonar-scanner \
-                                -Dsonar.projectKey=$PROJECT_NAME \
-                                -Dsonar.sources=. \
-                                -Dsonar.host.url=$SONARQUBE_URL \
+                            ${scannerHome}/bin/sonar-scanner \\
+                                -Dsonar.projectKey=$PROJECT_NAME \\
+                                -Dsonar.sources=. \\
+                                -Dsonar.host.url=$SONARQUBE_URL \\
                                 -Dsonar.login=$SONARQUBE_TOKEN
                         """
                     }
                 }
             }
         }
+        
         stage('Dependency Check') {
             environment {
                 NVD_API_KEY = credentials('nvdApiKey')
